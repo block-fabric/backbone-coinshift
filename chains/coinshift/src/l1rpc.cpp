@@ -10,12 +10,20 @@
 #include <bt/crypto.h>
 #include <bt/log.h>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <mutex>
+#else
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#endif
 
+#include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -26,9 +34,14 @@ namespace coinshift::l1 {
 
 std::string config_path()
 {
+#ifdef _WIN32
+    const char* app = std::getenv("APPDATA");
+    return std::string(app ? app : ".") + "\\coinshift\\l1_rpc_configs.json";
+#else
     if (const char* x = std::getenv("XDG_DATA_HOME"); x && *x) return std::string(x) + "/coinshift/l1_rpc_configs.json";
     const char* home = std::getenv("HOME");
     return std::string(home ? home : ".") + "/.local/share/coinshift/l1_rpc_configs.json";
+#endif
 }
 
 std::map<ParentChain, L1RpcConfig> read_configs(const std::string& path, bool* parsed)
@@ -148,7 +161,53 @@ std::string b64(const std::string& in)
     return o;
 }
 
-/** POST with a 10 s overall timeout; nullopt on transport errors. */
+namespace {
+// The few socket calls http_post needs, the same on Linux (POSIX) and Windows (Winsock).
+#ifdef _WIN32
+using sock_t = SOCKET;
+const sock_t BAD_SOCK = INVALID_SOCKET;
+using pfd_t = WSAPOLLFD;
+void net_init()
+{
+    static std::once_flag once;
+    std::call_once(once, [] {
+        WSADATA d;
+        WSAStartup(MAKEWORD(2, 2), &d);
+    });
+}
+sock_t open_nonblocking(int family, int type)
+{
+    sock_t s = socket(family, type, 0);
+    if (s == INVALID_SOCKET) return s;
+    u_long nb = 1;
+    if (ioctlsocket(s, FIONBIO, &nb) != 0) {
+        closesocket(s);
+        return INVALID_SOCKET;
+    }
+    return s;
+}
+bool connect_pending() { return WSAGetLastError() == WSAEWOULDBLOCK; }
+int poll_one(pfd_t& p, int ms) { return WSAPoll(&p, 1, ms); }
+long send_some(sock_t s, const char* d, size_t n) { return send(s, d, int(std::min<size_t>(n, 1 << 30)), 0); }
+long recv_some(sock_t s, char* d, size_t n) { return recv(s, d, int(n), 0); }
+void close_sock(sock_t s) { closesocket(s); }
+#else
+using sock_t = int;
+const sock_t BAD_SOCK = -1;
+using pfd_t = pollfd;
+void net_init() {}
+sock_t open_nonblocking(int family, int type) { return socket(family, type | SOCK_NONBLOCK, 0); }
+bool connect_pending() { return errno == EINPROGRESS; }
+int poll_one(pfd_t& p, int ms) { return poll(&p, 1, ms); }
+long send_some(sock_t s, const char* d, size_t n) { return send(s, d, n, MSG_NOSIGNAL); }
+long recv_some(sock_t s, char* d, size_t n) { return recv(s, d, n, 0); }
+void close_sock(sock_t s) { close(s); }
+#endif
+} // namespace
+
+/** POST with a 10 s overall timeout; nullopt on transport errors. The response is read up to
+ *  L1_MAX_RESPONSE bytes (a larger one is a transport error). */
+static constexpr size_t L1_MAX_RESPONSE = size_t{64} << 20;
 std::optional<std::string> http_post(const L1RpcConfig& cfg, const std::string& body, std::string& err)
 {
     auto u = parse_url(cfg.url);
@@ -156,6 +215,7 @@ std::optional<std::string> http_post(const L1RpcConfig& cfg, const std::string& 
         err = "unsupported URL " + cfg.url;
         return std::nullopt;
     }
+    net_init();
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
     addrinfo hints{}, *res = nullptr;
     hints.ai_socktype = SOCK_STREAM;
@@ -163,25 +223,25 @@ std::optional<std::string> http_post(const L1RpcConfig& cfg, const std::string& 
         err = "dns error";
         return std::nullopt;
     }
-    int fd = -1;
+    sock_t fd = BAD_SOCK;
     for (auto* a = res; a; a = a->ai_next) {
-        fd = socket(a->ai_family, a->ai_socktype | SOCK_NONBLOCK, 0);
-        if (fd < 0) continue;
-        int rc = connect(fd, a->ai_addr, a->ai_addrlen);
-        if (rc == 0 || errno == EINPROGRESS) {
-            pollfd p{fd, POLLOUT, 0};
-            if (poll(&p, 1, 10000) == 1) {
+        fd = open_nonblocking(a->ai_family, a->ai_socktype);
+        if (fd == BAD_SOCK) continue;
+        int rc = connect(fd, a->ai_addr, int(a->ai_addrlen));
+        if (rc == 0 || connect_pending()) {
+            pfd_t p{fd, POLLOUT, 0};
+            if (poll_one(p, 10000) == 1) {
                 int e = 0;
                 socklen_t l = sizeof e;
-                getsockopt(fd, SOL_SOCKET, SO_ERROR, &e, &l);
+                getsockopt(fd, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&e), &l);
                 if (e == 0) break;
             }
         }
-        close(fd);
-        fd = -1;
+        close_sock(fd);
+        fd = BAD_SOCK;
     }
     freeaddrinfo(res);
-    if (fd < 0) {
+    if (fd == BAD_SOCK) {
         err = "error sending request";
         return std::nullopt;
     }
@@ -191,24 +251,29 @@ std::optional<std::string> http_post(const L1RpcConfig& cfg, const std::string& 
     req += "content-length: " + std::to_string(body.size()) + "\r\n\r\n" + body;
     size_t off = 0;
     while (off < req.size()) {
-        pollfd p{fd, POLLOUT, 0};
+        pfd_t p{fd, POLLOUT, 0};
         int ms = int(std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now()).count());
-        if (ms <= 0 || poll(&p, 1, ms) != 1) break;
-        ssize_t n = send(fd, req.data() + off, req.size() - off, MSG_NOSIGNAL);
+        if (ms <= 0 || poll_one(p, ms) != 1) break;
+        long n = send_some(fd, req.data() + off, req.size() - off);
         if (n <= 0) break;
         off += size_t(n);
     }
     std::string resp;
     char buf[8192];
     for (;;) {
-        pollfd p{fd, POLLIN, 0};
+        pfd_t p{fd, POLLIN, 0};
         int ms = int(std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now()).count());
-        if (ms <= 0 || poll(&p, 1, ms) != 1) break;
-        ssize_t n = recv(fd, buf, sizeof buf, 0);
+        if (ms <= 0 || poll_one(p, ms) != 1) break;
+        long n = recv_some(fd, buf, sizeof buf);
         if (n <= 0) break;
+        if (resp.size() + size_t(n) > L1_MAX_RESPONSE) {
+            close_sock(fd);
+            err = "response too large";
+            return std::nullopt;
+        }
         resp.append(buf, size_t(n));
     }
-    close(fd);
+    close_sock(fd);
     auto hdr_end = resp.find("\r\n\r\n");
     if (hdr_end == std::string::npos) {
         err = "error decoding response body";

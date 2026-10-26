@@ -33,9 +33,14 @@ static void on_signal(int) { g_stop = true; }
 
 static std::string data_dir()
 {
+#ifdef _WIN32
+    const char* app = std::getenv("APPDATA");
+    return std::string(app ? app : ".");
+#else
     if (const char* x = std::getenv("XDG_DATA_HOME"); x && *x) return x;
     const char* home = std::getenv("HOME");
     return std::string(home ? home : ".") + "/.local/share";
+#endif
 }
 
 static bool parse_sockaddr(const std::string& s, bt::quic::SockAddr& out)
@@ -82,7 +87,9 @@ static void usage()
 
 int main(int argc, char** argv)
 {
-    std::signal(SIGPIPE, SIG_IGN); // a stopped enforcer or L1 node must not kill the node
+#ifndef _WIN32
+    std::signal(SIGPIPE, SIG_IGN); // a stopped enforcer or L1 node must not kill the node (no SIGPIPE on Windows)
+#endif
     bt::sidechain::NodeConfig cfg;
     cfg.net_addr = {"0.0.0.0", DEFAULT_PORT};
     cfg.datadir = data_dir() + "/coinshift";

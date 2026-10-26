@@ -258,9 +258,14 @@ std::optional<ParentChain> parent_chain_arg(std::string s)
 
 std::string data_dir()
 {
+#ifdef _WIN32
+    const char* app = std::getenv("APPDATA");
+    return std::string(app ? app : ".");
+#else
     if (const char* x = std::getenv("XDG_DATA_HOME"); x && *x) return x;
     const char* home = std::getenv("HOME");
     return std::string(home ? home : ".") + "/.local/share";
+#endif
 }
 std::string l1_config_path() { return data_dir() + "/coinshift/l1_rpc_configs.json"; }
 

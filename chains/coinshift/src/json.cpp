@@ -7,7 +7,12 @@
 
 #include <bt/parse.h>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
 #include <arpa/inet.h>
+#endif
 #include <cctype>
 #include <cmath>
 #include <cstdio>

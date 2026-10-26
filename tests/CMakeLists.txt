@@ -4,7 +4,8 @@ add_executable(bt_tests
   test_coinshift_policy.cpp
   test_coinshift_json.cpp
   test_coinshift_privfile.cpp
-  test_coinshift_sim.cpp)
+  test_coinshift_sim.cpp
+  test_coinshift_l1rpc.cpp)
 if(BT_WITH_NET)
   target_sources(bt_tests PRIVATE test_coinshift_wallet.cpp)
   target_link_libraries(bt_tests PRIVATE coinshift_node bt_net)
