@@ -10,6 +10,7 @@
 #include <coinshift/app.h>
 #include <coinshift/appui.h>
 
+#include <bt/agent.h>
 #include <bt/frost.h>
 #include <bt/fsperm.h>
 #include <bt/jsonrpc.h>
@@ -25,7 +26,7 @@
 
 using namespace coinshift;
 
-static const char* OUR_VERSION = "backbone-coinshift 0.1.0 (coinshift 0.14.8 compatible)";
+static const std::string OUR_VERSION = bt::agent() + " (Backbone drop-in; coinshift 0.14.8 compatible)";
 
 static std::atomic<bool> g_stop{false};
 static void on_signal(int) { g_stop = true; }
@@ -136,7 +137,7 @@ int main(int argc, char** argv)
             usage();
             return 0;
         } else if (a == "-V" || a == "--version") {
-            std::printf("coinshift_app %s\n%s\n", VERSION, OUR_VERSION);
+            std::printf("coinshift_app %s\n%s\n", VERSION, OUR_VERSION.c_str());
             return 0;
         } else if (a == "init") {
             init = true;
@@ -242,7 +243,7 @@ int main(int argc, char** argv)
     if (!logs.empty()) bt::log::set_file(logs, file_log_level);
     for (auto& u : unknown) LOG_WARN("ignoring unknown argument '%s'", u.c_str());
     if (!headless) LOG_INFO("no GUI in this build; running headless");
-    LOG_INFO("%s starting: datadir %s, mainchain %s", OUR_VERSION, cfg.datadir.c_str(), cfg.mainchain_grpc_url.c_str());
+    LOG_INFO("%s starting: datadir %s, mainchain %s", OUR_VERSION.c_str(), cfg.datadir.c_str(), cfg.mainchain_grpc_url.c_str());
 
     // app.rs App::new: validate the L1 config file before start (exact predefined configs, chain check)
     if (auto e = l1::validate_config_file(l1_path); !e.empty()) {

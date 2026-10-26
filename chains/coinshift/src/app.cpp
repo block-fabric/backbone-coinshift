@@ -406,6 +406,7 @@ void register_rpc(bt::jsonrpc::Server& s, App& app)
             UniValue o(UniValue::VOBJ);
             o.pushKV("address", pv.address.to_string());
             o.pushKV("status", pv.connected ? "Connected" : "Connecting");
+            o.pushKV("name", pv.name);
             a.push_back(o);
         }
         return a;
