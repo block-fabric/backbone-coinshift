@@ -167,6 +167,14 @@
     }
     await theme('midnight');
 
+    // ---- the explorer (the kit's layout): a block clicked in the table shows below it, on the same page
+    await go('explorer');
+    await waitFor('the ribbon and the blocks', () => document.querySelector('.ribbon button.blk') && document.querySelectorAll('[role="row"]').length > 2, 30000);
+    document.querySelectorAll('[role="row"]')[1].click();
+    await waitFor('the block below the table', () => document.querySelector('section.detail #explorer-title'), 15000);
+    await check('a block opens below the table, the table kept', !!document.querySelector('.table-box [role="row"]') && /Block/.test(document.querySelector('#explorer-title').textContent));
+    await snapshot('coinshift-08-explorer-block');
+
     // ---- the backup phrase shown again: a question of the trusted dialog, never words in the page
     await go('settings', 'dropwallet');
     await host('test.confirmAnswer', { yes: true });
