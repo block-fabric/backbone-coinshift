@@ -1,0 +1,315 @@
+/* The pages of Coinshift: shared pieces, in the colour tokens of themes.css only (text in the text tokens; the colours
+   of the stages are for lines, dots and bars, never for text). */
+
+/* Chips to pick from: filters, amounts. */
+.cs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.cs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.9rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 550;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cs-chip:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+.cs-chip[aria-pressed='true'],
+.cs-chip[aria-checked='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--text);
+}
+.cs-chip .count {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+/* On the soft accent of a chip pressed, the faint text falls under 4.5:1 in Light (4.45): the colour of the text
+   (). */
+.cs-chip[aria-pressed='true'] .count,
+.cs-chip[aria-checked='true'] .count {
+  color: var(--text);
+}
+
+/* A grid of cards (markets, decisions to vote on). */
+.cs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(19rem, 100%), 1fr));
+  gap: 0.9rem;
+}
+
+/* Figures in a row. */
+.cs-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(10.5rem, 100%), 1fr));
+  gap: 0.8rem;
+}
+.cs-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  min-width: 0;
+}
+.cs-figure strong {
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A stage of a decision or a market. */
+.cs-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--raised);
+  color: var(--text-muted);
+}
+.cs-stage.live {
+  background: var(--accent-soft);
+  color: var(--positive);
+}
+.cs-stage.vote {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.cs-stage.done {
+  background: var(--raised);
+  color: var(--text-muted);
+}
+.cs-stage.bad {
+  background: var(--danger-soft);
+  color: var(--negative);
+}
+
+/* Values that rise or fall. */
+.cs-up {
+  color: var(--positive);
+}
+.cs-down {
+  color: var(--negative);
+}
+
+/* A table of the pages, the kit's sidechain table look. */
+.cs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.cs-table th {
+  padding: 0.5rem 0.8rem;
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.cs-table td {
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.cs-table tr:last-child td {
+  border-bottom: 0;
+}
+.cs-table .end {
+  text-align: right;
+}
+.cs-table tbody tr.click {
+  cursor: pointer;
+}
+.cs-table tbody tr.click:hover,
+.cs-table tbody tr.click:focus-visible {
+  background: var(--surface-2);
+  outline: none;
+}
+.cs-table .cut {
+  max-width: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cs-wrap {
+  overflow-x: auto;
+  container-type: inline-size;
+}
+/* In a narrow panel (a window of 480 px), a table is a list of cards: every cell under the words of its column
+   (use:stacked), so that Worth, Profit or loss and Stage are not hidden behind a scroll. */
+@container (max-width: 36rem) {
+  table.cs-table,
+  table.cs-table tbody,
+  table.cs-table tr,
+  table.cs-table td {
+    display: block;
+  }
+  table.cs-table thead {
+    display: none;
+  }
+  table.cs-table tr {
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  table.cs-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.2rem 0.8rem;
+    border: 0;
+    text-align: right;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  table.cs-table td[data-label]::before {
+    content: attr(data-label);
+    flex: none;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    text-align: left;
+  }
+  table.cs-table td.cut {
+    max-width: none;
+    white-space: normal;
+  }
+}
+
+/* A line of help under a field, a problem of a form. */
+.cs-help {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.cs-problems {
+  margin: 0;
+  padding: 0.6rem 0.9rem 0.6rem 2rem;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-m);
+  background: var(--warning-soft);
+  color: var(--text);
+  font-size: 0.88rem;
+}
+.cs-empty {
+  margin: 0;
+  padding: 1.6rem 1.2rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* The steps of a swap: offered, reserved, paid on L1, confirmed, claimed. */
+.cs-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+.cs-steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+.cs-steps li + li::before {
+  content: '';
+  width: 1.6rem;
+  height: 2px;
+  margin: 0 0.45rem;
+  background: var(--line);
+}
+.cs-steps li.done + li::before {
+  background: var(--accent);
+}
+.cs-steps .dot {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  background: var(--surface);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.cs-steps li.done {
+  color: var(--text);
+}
+.cs-steps li.done .dot {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--surface);
+}
+.cs-steps li.now {
+  color: var(--text);
+  font-weight: 650;
+}
+.cs-steps li.now .dot {
+  border-color: var(--accent);
+}
+
+/* How far a payment's confirmations went. */
+.cs-bar {
+  position: relative;
+  display: block;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: var(--raised);
+  overflow: hidden;
+}
+.cs-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+/* The two sides of a swap, side by side. */
+.cs-sides {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.6rem;
+}
+.cs-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.cs-side strong {
+  font-size: 1.05rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cs-side.l1 {
+  text-align: right;
+}

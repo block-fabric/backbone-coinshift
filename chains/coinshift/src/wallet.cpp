@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <cstring>
 
+#include <sodium.h>
+
 namespace coinshift {
 
 using bt::kv::Txn;
@@ -52,6 +54,17 @@ bt::ByteArray<64> Wallet::need_seed()
     auto s = seed();
     if (!s) throw WalletError("wallet does not have a seed (set with RPC `set-seed-from-mnemonic`)");
     return *s;
+}
+
+std::optional<Hash32> Wallet::seed_digest(std::string_view label)
+{
+    std::lock_guard<std::recursive_mutex> l(mu_);
+    auto s = seed();
+    if (!s) return std::nullopt;
+    const uint8_t zero = 0;
+    Hash32 h = bt::sha256_parts({ByteSpan(reinterpret_cast<const uint8_t*>(label.data()), label.size()), ByteSpan(&zero, 1), s->span()});
+    sodium_memzero(s->data(), s->size());
+    return h;
 }
 
 bool Wallet::has_seed()
@@ -271,6 +284,10 @@ std::pair<uint64_t, std::vector<std::pair<OutPoint, Output>>> Wallet::select_coi
             auto s = node_.state().swap(nt, o.content.swap_id);
             uint32_t h = ht ? *ht + 1 : 0;
             if (s && !(s->expires_at_height && h >= *s->expires_at_height)) continue;
+            // Kept fix (wallet only): an expired escrow is taken back only by the swap's creator; an escrow at this
+            // wallet's address as a swap's pre-specified recipient is never spent as a coin (known upstream
+            // behaviour reproduced in consensus; this wallet does not rely on it).
+            if (!s || !s->l2_creator_address || !is_mine(*s->l2_creator_address)) continue;
         }
         if (total >= value) break;
         if (total + o.get_value() < total) throw WalletError("Bitcoin amount overflow");

@@ -36,6 +36,8 @@ public:
     /** set_seed: error if a different seed exists ("seed has already been set"). */
     void set_seed(const bt::ByteArray<64>& seed);
     void set_seed_from_mnemonic(const std::string& mnemonic);
+    /** SHA-256(label 0x00 seed), or nothing without a seed: a public fingerprint of the seed (the app layer's), never the seed. */
+    std::optional<Hash32> seed_digest(std::string_view label);
 
     Address get_new_address();
     Address get_receive_address();

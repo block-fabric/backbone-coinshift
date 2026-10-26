@@ -34,3 +34,18 @@ coinshift-cli getblockcount                                                    #
 
 Defaults as theirs: P2P 0.0.0.0:4255 (magic 2d 0c d8 04), RPC 127.0.0.1:6255, datadir
 `<data_dir>/coinshift`, L1 config `<data_dir>/coinshift/l1_rpc_configs.json`.
+
+## The app (coinshift-app)
+
+Our sidechain app on this node: the sidechain template's window, trusted dialog and interface kit, with pages for
+Coinshift's swaps (offering one L2 to L1, the open swaps, reserving and claiming one, each swap's status) beside the
+standard wallet pages; the node (`coinshift`) runs as the app's child, unchanged (consensus and the LayerTwo RPC byte
+for byte), the app talking to its separate, authenticated app RPC. The app claims a swap only once it saw its payment
+on an L1 node the user set up (Settings → L1 nodes). The same pages are a pack for the unified wallet. See `doc/app.md`
+and `core/doc/app.md`.
+
+```
+cmake -S . -B build-app -DBT_BUILD_APP=ON -DBT_KIT_DIR=<sidechain-template repo> -DBT_DEPENDS_PREFIX=<prefix>   # GTK 3, WebKitGTK 4.1, npm
+~/skydoge/tools/build.sh ~/skydoge/backbone-coinshift-app build-app
+build-app/chains/coinshift/coinshift-app
+```

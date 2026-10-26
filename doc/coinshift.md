@@ -36,7 +36,11 @@ disconnect 2WPD window uses `applied_height < height - 1`; pending bundles never
 * Mempool/relay/template policy on top of their validate_transaction: no repeated inputs, no replays
   of confirmed txs, swap-claim and swap-accept policy, no spend of an unexpired swap's escrow; the
   template regenerates proofs and drops what no longer proves.
-* Wallet: escrows of unexpired swaps are not selected; a claim only sweeps outputs locked to its swap.
+* Wallet: escrows of unexpired swaps are not selected; a claim only sweeps outputs locked to its swap; an expired
+  swap's escrow is taken back only by its creator (an escrow at the wallet's address as a pre-specified recipient is
+  never spent as a coin).
+* App layer (doc/app.md): a swap is claimed through the app only once the app saw its L1 payment itself, on an L1 node
+  the user set up; `cancel_swap` and a hand-set `update_swap_l1_txid` are not offered to its pages.
 * P2P hardening from core (bans at connect/request/dial, fail-closed, per-IP GetHeaders budget,
   bounded body fetch); SIGPIPE ignored; L1 config written owner-only (0600, no symlinks).
 * No panics: their asserts are rejections (the block is refused, the node keeps running).
